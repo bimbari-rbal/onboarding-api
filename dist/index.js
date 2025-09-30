@@ -7,10 +7,12 @@ const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
 const morgan_1 = __importDefault(require("morgan"));
+const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 const env_1 = require("./config/env");
 const database_1 = require("./config/database");
 const errorHandler_1 = require("./middleware/errorHandler");
 const rateLimiter_1 = require("./middleware/rateLimiter");
+const swagger_1 = require("./config/swagger");
 const authRoutes_1 = __importDefault(require("./routes/authRoutes"));
 const conversationRoutes_1 = __importDefault(require("./routes/conversationRoutes"));
 const chatRoutes_1 = __importDefault(require("./routes/chatRoutes"));
@@ -21,12 +23,38 @@ app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
 app.use((0, morgan_1.default)('dev'));
 app.use(rateLimiter_1.generalLimiter);
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     tags: [Health]
+ *     summary: Health check
+ *     description: Check if the API is running
+ *     responses:
+ *       200:
+ *         description: API is healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: ok
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ */
 app.get('/health', (_req, res) => {
     res.status(200).json({
         status: 'ok',
         timestamp: new Date().toISOString()
     });
 });
+app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_1.swaggerSpec, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'Chatbot API Documentation'
+}));
 app.use('/api/auth', authRoutes_1.default);
 app.use('/api/conversations', conversationRoutes_1.default);
 app.use('/api/chat', chatRoutes_1.default);
@@ -37,6 +65,7 @@ const startServer = async () => {
         const server = app.listen(env_1.config.port, () => {
             console.log(`Server running on port ${env_1.config.port}`);
             console.log(`Environment: ${env_1.config.nodeEnv}`);
+            console.log(`API Documentation: http://localhost:${env_1.config.port}/api-docs`);
         });
         const gracefulShutdown = async (signal) => {
             console.log(`\n${signal} received. Starting graceful shutdown...`);
